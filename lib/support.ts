@@ -146,8 +146,6 @@ export function isSupportAdmin(profile: SupportProfile | null) {
 }
 
 export async function requireSupportUser() {
-  if (!supabase) throw new Error("Supabase is not configured.");
-
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData.user) throw new Error("Please sign in to continue.");
 
@@ -168,8 +166,6 @@ export async function requireSupportUser() {
 }
 
 export async function listSupportTickets(profile: SupportProfile) {
-  if (!supabase) return [];
-
   let query = supabase
     .from("support_tickets")
     .select("*")
@@ -184,8 +180,6 @@ export async function listSupportTickets(profile: SupportProfile) {
 }
 
 export async function getSupportTicket(id: string) {
-  if (!supabase) throw new Error("Supabase is not configured.");
-
   const [{ data: ticket, error: ticketError }, { data: messages, error: messagesError }] = await Promise.all([
     supabase.from("support_tickets").select("*").eq("id", id).single(),
     supabase.from("support_messages").select("*").eq("ticket_id", id).order("created_at", { ascending: true })
@@ -208,8 +202,6 @@ export async function createSupportTicket(input: {
   priority: SupportPriority;
   attachments: SupportAttachment[];
 }) {
-  if (!supabase) throw new Error("Supabase is not configured.");
-
   const { data, error } = await supabase
     .from("support_tickets")
     .insert({
@@ -236,8 +228,6 @@ export async function addSupportMessage(input: {
   isInternal: boolean;
   attachments: SupportAttachment[];
 }) {
-  if (!supabase) throw new Error("Supabase is not configured.");
-
   const { data, error } = await supabase
     .from("support_messages")
     .insert({
@@ -261,14 +251,13 @@ export async function updateSupportTicket(id: string, patch: Partial<{
   assigned_to: string | null;
   assigned_to_name: string | null;
 }>) {
-  if (!supabase) throw new Error("Supabase is not configured.");
-
   const update: Record<string, string | null> = {};
+
   if (patch.status) {
     update.status = patch.status;
-    if (patch.status === "Resolved") update.resolved_at = new Date().toISOString();
-    if (patch.status !== "Resolved") update.resolved_at = null;
+    update.resolved_at = patch.status === "Resolved" ? new Date().toISOString() : null;
   }
+
   if (patch.priority) update.priority = patch.priority;
   if ("assigned_to" in patch) update.assigned_to = patch.assigned_to ?? null;
   if ("assigned_to_name" in patch) update.assigned_to_name = patch.assigned_to_name ?? null;
@@ -285,13 +274,14 @@ export async function updateSupportTicket(id: string, patch: Partial<{
 }
 
 export async function listSupportStaff() {
-  if (!supabase) return [];
   const { data, error } = await supabase
     .from("profiles")
     .select("id, full_name, role")
     .in("role", ["admin", "owner", "staff"])
     .order("full_name", { ascending: true });
+
   if (error) throw error;
+
   return data.map((row) => ({
     id: row.id as string,
     name: (row.full_name as string | null) ?? "Staff",
@@ -300,21 +290,32 @@ export async function listSupportStaff() {
 }
 
 export async function uploadSupportAttachments(files: FileList | null, ticketScope: string) {
-  if (!supabase || !files?.length) return [];
+  if (!files?.length) return [];
 
   const uploads = Array.from(files).map(async (file) => {
     const path = `${ticketScope}/${crypto.randomUUID()}-${file.name}`;
-    const { error } = await supabase.storage.from("support-attachments").upload(path, file);
+
+    const { error } = await supabase.storage
+      .from("support-attachments")
+      .upload(path, file);
+
     if (error) throw error;
-    return { name: file.name, path, size: file.size } satisfies SupportAttachment;
+
+    return {
+      name: file.name,
+      path,
+      size: file.size
+    } satisfies SupportAttachment;
   });
 
   return Promise.all(uploads);
 }
 
 export async function createSupportAttachmentUrl(path: string) {
-  if (!supabase) return "";
-  const { data, error } = await supabase.storage.from("support-attachments").createSignedUrl(path, 60 * 10);
+  const { data, error } = await supabase.storage
+    .from("support-attachments")
+    .createSignedUrl(path, 60 * 10);
+
   if (error) throw error;
   return data.signedUrl;
 }
