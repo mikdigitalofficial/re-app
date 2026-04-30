@@ -1,0 +1,13 @@
+node_modules
+.next
+.vercel
+.env.local
+.env
+.git/
+.gitrepo/
+.npm-cache/
+dev-server.log
+dev-server.err.log
+dist
+out
+*.log
