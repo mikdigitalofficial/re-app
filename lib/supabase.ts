@@ -3,10 +3,12 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// ✅ Fail fast if env is missing
-if (!supabaseUrl || !supabaseKey) {
+// ✅ Export this (fix your error)
+export const hasSupabaseConfig = !!supabaseUrl && !!supabaseKey;
+
+// ✅ Still fail fast in production usage
+if (!hasSupabaseConfig) {
   throw new Error("Missing Supabase environment variables");
 }
 
-// ✅ Non-null client
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = createClient(supabaseUrl!, supabaseKey!);
